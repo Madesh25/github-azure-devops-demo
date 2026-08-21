@@ -90,39 +90,47 @@ stages:
   condition: succeeded()
 
   jobs:
-  - job: DeployJob
+  - deployment: DeployJob
     displayName: "Download and Deploy"
+    environment: dev
 
-    steps:
+    pool:
+      vmImage: ubuntu-latest
 
-    - task: DownloadPipelineArtifact@2
-      displayName: "Download Build Artifact"
-      inputs:
-        buildType: "current"
-        artifactName: "app-package"
-        targetPath: "$(Pipeline.Workspace)/app-package"
+    strategy:
+      runOnce:
+        deploy:
 
-    - script: |
-        echo "Downloaded artifact:"
-        find "$(Pipeline.Workspace)/app-package" -type f -print
-      displayName: "Inspect Downloaded Artifact"
+          steps:
 
-    - script: |
-        mkdir -p "$(Pipeline.Workspace)/deployed-app"
+          - task: DownloadPipelineArtifact@2
+            displayName: "Download Build Artifact"
+            inputs:
+              buildType: "current"
+              artifactName: "app-package"
+              targetPath: "$(Pipeline.Workspace)/app-package"
 
-        unzip -o \
-          "$(Pipeline.Workspace)/app-package/app-package.zip" \
-          -d "$(Pipeline.Workspace)/deployed-app"
+          - script: |
+              echo "Downloaded artifact:"
+              find "$(Pipeline.Workspace)/app-package" -type f -print
+            displayName: "Inspect Downloaded Artifact"
 
-        echo "Extracted files:"
-        find "$(Pipeline.Workspace)/deployed-app" -type f
-      displayName: "Extract Application"
+          - script: |
+              mkdir -p "$(Pipeline.Workspace)/deployed-app"
 
-    - script: |
-        cd "$(Pipeline.Workspace)/deployed-app"
+              unzip -o \
+                "$(Pipeline.Workspace)/app-package/app-package.zip" \
+                -d "$(Pipeline.Workspace)/deployed-app"
 
-        sed -i 's/\r$//' app.sh
-        chmod +x app.sh
+              echo "Extracted files:"
+              find "$(Pipeline.Workspace)/deployed-app" -type f
+            displayName: "Extract Application"
 
-        ./app.sh
-      displayName: "Run Application from Artifact"
+          - script: |
+              cd "$(Pipeline.Workspace)/deployed-app"
+
+              sed -i 's/\r$//' app.sh
+              chmod +x app.sh
+
+              ./app.sh
+            displayName: "Run Application from Artifact"
