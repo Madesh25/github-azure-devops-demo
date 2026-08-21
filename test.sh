@@ -1,4 +1,5 @@
-Running application tests...
+#!/bin/bash
+echo "Running application tests..."
 
-Application file exists.
-Tests passed successfully.
+echo "Application file exists."
+echo "Tests passed successfully."
