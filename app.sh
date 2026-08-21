@@ -1,9 +1,12 @@
 #!/bin/bash
-==============================
-   GitHub DevOps Demo App
-==============================
 
-Application Name : GitHub Demo
-Environment      : Development
+echo "=============================="
+echo "   GitHub DevOps Demo App"
+echo "=============================="
 
-Application started successfully.
+echo ""
+echo "Application Name : $APP_NAME"
+echo "Environment      : $ENVIRONMENT"
+
+echo ""
+echo "Application started successfully."
