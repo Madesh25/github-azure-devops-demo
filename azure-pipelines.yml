@@ -1,0 +1,128 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+
+trigger:
+- main
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+- name: APP_NAME
+  value: "GitHub Demo"
+- name: ENVIRONMENT
+  value: "Development"
+
+stages:
+
+# ============================================================
+# BUILD STAGE
+# ============================================================
+
+- stage: Build
+  displayName: "Build Application"
+
+  jobs:
+  - job: BuildJob
+    displayName: "Build and Test"
+
+    steps:
+
+    - checkout: self
+
+    - script: |
+        echo "================================="
+        echo "Application Information"
+        echo "================================="
+        echo "Application Name : $(APP_NAME)"
+        echo "Environment      : $(ENVIRONMENT)"
+      displayName: "Show Application Information"
+
+    - script: |
+        sed -i 's/\r$//' app.sh
+        chmod +x app.sh
+        ./app.sh
+      displayName: "Run Application"
+
+    - script: |
+        sed -i 's/\r$//' test.sh
+        chmod +x test.sh
+        ./test.sh
+      displayName: "Run Application Tests"
+
+    - script: |
+        mkdir -p $(Build.ArtifactStagingDirectory)/artifact
+
+        cp app.sh $(Build.ArtifactStagingDirectory)/artifact/
+        cp test.sh $(Build.ArtifactStagingDirectory)/artifact/
+        cp README.md $(Build.ArtifactStagingDirectory)/artifact/
+
+        echo "Files going into artifact:"
+        ls -la $(Build.ArtifactStagingDirectory)/artifact
+      displayName: "Prepare Artifact"
+
+    - task: ArchiveFiles@2
+      displayName: "Create Application ZIP"
+      inputs:
+        rootFolderOrFile: "$(Build.ArtifactStagingDirectory)/artifact"
+        includeRootFolder: false
+        archiveType: "zip"
+        archiveFile: "$(Build.ArtifactStagingDirectory)/app-package.zip"
+        replaceExistingArchive: true
+
+    - task: PublishPipelineArtifact@1
+      displayName: "Publish Build Artifact"
+      inputs:
+        targetPath: "$(Build.ArtifactStagingDirectory)/app-package.zip"
+        artifact: "app-package"
+
+
+# ============================================================
+# DEPLOY STAGE
+# ============================================================
+
+- stage: Deploy
+  displayName: "Deploy Application"
+
+  dependsOn: Build
+  condition: succeeded()
+
+  jobs:
+  - job: DeployJob
+    displayName: "Download and Deploy"
+
+    steps:
+
+    - task: DownloadPipelineArtifact@2
+      displayName: "Download Build Artifact"
+      inputs:
+        buildType: "current"
+        artifactName: "app-package"
+        targetPath: "$(Pipeline.Workspace)/app-package"
+
+    - script: |
+        echo "Downloaded artifact:"
+        find "$(Pipeline.Workspace)/app-package" -type f -print
+      displayName: "Inspect Downloaded Artifact"
+
+    - script: |
+        mkdir -p "$(Pipeline.Workspace)/deployed-app"
+
+        unzip -o \
+          "$(Pipeline.Workspace)/app-package/app-package.zip" \
+          -d "$(Pipeline.Workspace)/deployed-app"
+
+        echo "Extracted files:"
+        find "$(Pipeline.Workspace)/deployed-app" -type f
+      displayName: "Extract Application"
+
+    - script: |
+        cd "$(Pipeline.Workspace)/deployed-app"
+
+        sed -i 's/\r$//' app.sh
+        chmod +x app.sh
+
+        ./app.sh
+      displayName: "Run Application from Artifact"
